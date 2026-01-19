@@ -530,77 +530,96 @@
                 /* Hide main panel on mobile logic initially or redesign */
             }
 
-            /* Redesign for mobile: Bottom Sheet style */
-            .mobile-bottom-sheet {
+            /* Redesigned Mobile Experience */
+            .mobile-nav {
                 position: absolute;
-                bottom: 0px;
-                left: 0;
-                right: 0;
-                background: var(--bg-glass);
-                border-radius: 20px 20px 0 0;
-                padding: 20px;
-                z-index: 1000;
-                transform: translateY(85%);
-                /* Peeking */
-                transition: transform 0.3s;
-                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                bottom: 20px;
+                left: 15px;
+                right: 15px;
+                height: 75px;
+                display: flex;
+                justify-content: space-around;
+                align-items: center;
+                z-index: 1002;
+                padding: 0 5px;
+                background: rgba(10, 25, 47, 0.95);
+                /* Slightly darker for contrast */
             }
 
-            .mobile-bottom-sheet.expanded {
-                transform: translateY(0);
+            .nav-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: #a8b2d1;
+                font-size: 0.75rem;
+                gap: 6px;
+                cursor: pointer;
+                transition: all 0.2s;
+                width: 25%;
+                height: 100%;
+                border-radius: 10px;
             }
 
-            .sheet-handle {
-                width: 40px;
-                height: 4px;
-                background: rgba(255, 255, 255, 0.2);
-                border-radius: 2px;
-                margin: 0 auto 15px auto;
+            .nav-item:active {
+                background: rgba(255, 255, 255, 0.05);
+                color: var(--secondary-color);
+            }
+
+            .nav-item i {
+                font-size: 1.3rem;
+                margin-bottom: 2px;
+            }
+
+            /* Adjust positioning of other elements */
+            .action-bar,
+            .mobile-bottom-sheet,
+            .mobile-controls-fab {
+                display: none !important;
+                /* Replace old mobile controls */
+            }
+
+            .mode-selector {
+                bottom: 110px;
+                /* Above nav bar */
+                right: 15px;
             }
 
             .hud-header {
-                padding: 10px;
+                padding: 15px;
+                justify-content: center;
             }
 
             .trip-stat-card {
-                padding: 8px 12px;
-                border-radius: 12px;
+                width: 100%;
+                justify-content: space-between;
+                background: rgba(10, 25, 47, 0.9);
             }
 
-            .stat-value {
-                font-size: 1.2rem;
-            }
-
+            /* Full screen panels on mobile */
             .side-panel {
                 width: 100%;
-                left: -100%;
-                top: 0;
+                left: 0;
+                top: 100%;
+                /* Start below */
                 bottom: 0;
-                border-radius: 0;
+                border-radius: 20px 20px 0 0;
+                transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                z-index: 2000;
             }
 
             .side-panel.open {
                 left: 0;
+                top: 30%;
+                /* Show as bottom sheet covering 70% */
+                box-shadow: 0 -5px 30px rgba(0, 0, 0, 0.5);
             }
 
-            /* Custom Mobile Controls */
-            .mobile-controls-fab {
-                position: absolute;
-                bottom: 100px;
-                right: 20px;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                z-index: 998;
-            }
-
-            .location-box {
-                display: none;
-                /* Hide detailed location on mobile to save space */
-            }
-
-            .action-bar {
-                bottom: 20px;
+            /* Specific fix for feedback/service panels to be smaller if needed */
+            #emergency-panel.open {
+                top: auto;
+                bottom: 0;
+                height: 300px;
             }
         }
     </style>
@@ -689,10 +708,23 @@
         </div>
     </div>
 
-    <!-- Mobile Action Button (Visible only on mobile to open menu) -->
-    <div class="mobile-controls-fab d-md-none">
-        <div class="mode-btn" style="background: var(--primary-color); color: white;" id="mobile-menu-trigger">
-            <i class="fas fa-bars"></i>
+    <!-- Mobile Bottom Navigation (Visible only on mobile) -->
+    <div class="mobile-nav glass-panel d-md-none">
+        <div class="nav-item" id="mob-atm-btn">
+            <i class="fas fa-money-bill-wave"></i>
+            <span>أقرب صراف</span>
+        </div>
+        <div class="nav-item" id="mob-branches-btn">
+            <i class="fas fa-building-columns"></i>
+            <span>الفروع</span>
+        </div>
+        <div class="nav-item" id="mob-recenter-btn">
+            <i class="fas fa-crosshairs"></i>
+            <span>موقعي</span>
+        </div>
+        <div class="nav-item" id="mob-service-btn">
+            <i class="fas fa-headset"></i>
+            <span>خدمة</span>
         </div>
     </div>
 
@@ -1147,11 +1179,21 @@
             });
         });
 
-        // Mobile Menu Trigger (Simple)
-        document.getElementById('mobile-menu-trigger')?.addEventListener('click', () => {
-            // In a real app, this would open a mobile optimized menu
-            // For now, let's open the branches panel as a fallback menu
-            togglePanel('branches-panel');
+        // Mobile Navigation Handlers
+        document.getElementById('mob-atm-btn').addEventListener('click', () => {
+            document.getElementById('find-nearest-atm-btn').click();
+        });
+
+        document.getElementById('mob-branches-btn').addEventListener('click', () => {
+            document.getElementById('nearby-branches-btn').click();
+        });
+
+        document.getElementById('mob-recenter-btn').addEventListener('click', () => {
+            document.getElementById('recenter-btn').click();
+        });
+
+        document.getElementById('mob-service-btn').addEventListener('click', () => {
+            togglePanel('emergency-panel');
         });
 
         // Initialize
