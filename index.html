@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>البنك العربي - نظام التتبع الذكي</title>
+    <!-- CSS Dependencies -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Cairo for professional Arabic look -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;600;700;900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #003366;
+            /* Arab Bank Blue (approx) */
+            --secondary-color: #c5a017;
+            /* Gold */
+            --accent-color: #00b4d8;
+            /* Cyan for tech feel */
+            --bg-glass: rgba(10, 25, 47, 0.85);
+            /* Dark Navy Glass */
+            --text-light: #e6f1ff;
+            --text-muted: #8892b0;
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+            --shadow-premium: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #020c1b;
+            overflow: hidden;
+            height: 100vh;
+            color: var(--text-light);
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- UI Components --- */
+
+        /* Glass Panel Base Class */
+        .glass-panel {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--shadow-premium);
+            transition: all 0.3s ease;
+        }
+
+        /* Header / Stats HUD */
+        .hud-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 15px 20px;
+            background: linear-gradient(180deg, rgba(2, 12, 27, 0.9) 0%, rgba(2, 12, 27, 0) 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            /* Allow clicking through on empty space */
+        }
+
+        .hud-content {
+            pointer-events: auto;
+        }
+
+        /* Speed & Trip Info */
+        .trip-stat-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 20px;
+        }
+
+        .stat-group {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            line-height: 1.2;
+            text-shadow: 0 0 10px rgba(0, 180, 216, 0.3);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .stat-divider {
+            width: 1px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Control Panel (Right Side) */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .brand-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 10px;
+        }
+
+        .brand-logo {
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+        }
+
+        .brand-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: white;
+        }
+
+        /* Buttons */
+        .btn-modern {
+            border: none;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-light);
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 8px;
+        }
+
+        .btn-modern:hover {
+            background: rgba(255, 255, 255, 0.1);
+            /* transform removed */
+            border-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .btn-primary-glow {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #004e92 100%);
+            border: none;
+            box-shadow: 0 4px 15px rgba(0, 51, 102, 0.4);
+        }
+
+        .btn-primary-glow:hover {
+            box-shadow: 0 6px 20px rgba(0, 51, 102, 0.6);
+            background: linear-gradient(135deg, #004e92 0%, var(--primary-color) 100%);
+        }
+
+        .btn-accent-glow {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: #020c1b;
+        }
+
+        /* Toggles & Checks */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+        }
+
+        .form-check-input {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+        }
+
+        .form-check-input:checked {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        /* Action Bar (Bottom) */
+        .action-bar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .action-fab {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+        }
+
+        .action-fab:hover {
+            /* transform removed to stop movement */
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .action-fab::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .action-fab:hover::after {
+            opacity: 1;
+        }
+
+        /* Location Info Box (Bottom Left) */
+        .location-box {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            width: 260px;
+            padding: 20px;
+            z-index: 999;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 5px;
+        }
+
+        .info-row:last-child {
+            border: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .info-key {
+            color: var(--text-muted);
+        }
+
+        .info-val {
+            color: var(--secondary-color);
+            font-weight: 600;
+            font-family: monospace;
+        }
+
+        /* Travel Mode Selector (Vertical Right) */
+        .mode-selector {
+            position: absolute;
+            right: 20px;
+            bottom: 120px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 999;
+            padding: 10px;
+        }
+
+        .mode-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mode-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 15px rgba(0, 51, 102, 0.5);
+        }
+
+        /* Slide-out Panels (Branches, Feedback, etc.) */
+        .side-panel {
+            position: absolute;
+            top: 20px;
+            left: -400px;
+            /* Hidden by default */
+            width: 350px;
+            bottom: 20px;
+            /* Full height minus margins */
+            z-index: 1001;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        .side-panel.open {
+            left: 20px;
+        }
+
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .panel-title {
+            font-weight: 700;
+            color: var(--secondary-color);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .panel-close:hover {
+            color: white;
+        }
+
+        .panel-body {
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* List Items */
+        .list-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .list-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateX(5px);
+        }
+
+        .item-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(0, 51, 102, 0.3);
+            color: var(--secondary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .item-info h6 {
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+
+        .item-info small {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .item-distance {
+            margin-right: auto;
+            color: var(--accent-color);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        /* Custom Markers */
+        .custom-marker {
+            cursor: pointer;
+            /* transition removed */
+        }
+
+        .custom-marker:hover {
+            /* transform removed */
+            z-index: 999;
+        }
+
+        .marker-pin {
+            width: 36px;
+            height: 36px;
+            border-radius: 50% 50% 50% 0;
+            background: var(--primary-color);
+            position: absolute;
+            transform: rotate(-45deg);
+            left: 50%;
+            top: 50%;
+            margin: -20px 0 0 -20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            border: 2px solid white;
+        }
+
+        .marker-pin i {
+            transform: rotate(45deg);
+            color: white;
+            font-size: 14px;
+        }
+
+        .marker-pin.atm {
+            background: var(--secondary-color);
+            border-color: #fff;
+        }
+
+        .marker-pin.branch {
+            background: var(--primary-color);
+        }
+
+        .marker-pin.gas {
+            background: #e74c3c;
+        }
+
+        .marker-pin.shop {
+            background: #9b59b6;
+        }
+
+        .marker-pin.default {
+            background: #95a5a6;
+        }
+
+        /* Compass */
+        .compass-ring {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+            margin: 10px auto;
+        }
+
+        .compass-arrow {
+            color: var(--secondary-color);
+            font-size: 1.5rem;
+            transition: transform 0.2s ease-out;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .control-panel {
+                top: auto;
+                bottom: 100px;
+                /* Above bottom sheet/actions */
+                right: 15px;
+                left: 15px;
+                width: auto;
+                flex-direction: row;
+                overflow-x: auto;
+                padding: 10px;
+                background: rgba(10, 25, 47, 0.95);
+                display: none;
+                /* Hide main panel on mobile logic initially or redesign */
+            }
+
+            /* Redesign for mobile: Bottom Sheet style */
+            .mobile-bottom-sheet {
+                position: absolute;
+                bottom: 0px;
+                left: 0;
+                right: 0;
+                background: var(--bg-glass);
+                border-radius: 20px 20px 0 0;
+                padding: 20px;
+                z-index: 1000;
+                transform: translateY(85%);
+                /* Peeking */
+                transition: transform 0.3s;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .mobile-bottom-sheet.expanded {
+                transform: translateY(0);
+            }
+
+            .sheet-handle {
+                width: 40px;
+                height: 4px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 2px;
+                margin: 0 auto 15px auto;
+            }
+
+            .hud-header {
+                padding: 10px;
+            }
+
+            .trip-stat-card {
+                padding: 8px 12px;
+                border-radius: 12px;
+            }
+
+            .stat-value {
+                font-size: 1.2rem;
+            }
+
+            .side-panel {
+                width: 100%;
+                left: -100%;
+                top: 0;
+                bottom: 0;
+                border-radius: 0;
+            }
+
+            .side-panel.open {
+                left: 0;
+            }
+
+            /* Custom Mobile Controls */
+            .mobile-controls-fab {
+                position: absolute;
+                bottom: 100px;
+                right: 20px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                z-index: 998;
+            }
+
+            .location-box {
+                display: none;
+                /* Hide detailed location on mobile to save space */
+            }
+
+            .action-bar {
+                bottom: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <!-- HUD Header -->
+    <div class="hud-header">
+        <div class="glass-panel trip-stat-card hud-content">
+            <div class="stat-group">
+                <div class="stat-value" id="current-speed">0</div>
+                <div class="stat-label">كم/س</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-group">
+                <div class="stat-value" id="eta-time">--</div>
+                <div class="stat-label">دقيقة</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-group">
+                <div class="stat-value" id="remaining-distance">--</div>
+                <div class="stat-label">كم</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Control Panel (Desktop & Tablet) -->
+    <div class="glass-panel control-panel d-none d-md-flex">
+        <div class="brand-header">
+            <i class="fas fa-university brand-logo"></i>
+            <span class="brand-name">ARAB BANK LOCATOR</span>
+        </div>
+
+        <button id="find-nearest-atm-btn" class="btn-modern btn-primary-glow">
+            <i class="fas fa-money-bill-wave"></i> اقرب صراف آلي
+        </button>
+
+        <button id="nearby-branches-btn" class="btn-modern">
+            <i class="fas fa-building-columns"></i> الفروع القريبة
+        </button>
+
+        <button id="recenter-btn" class="btn-modern">
+            <i class="fas fa-crosshairs"></i> موقعي الحالي
+        </button>
+
+        <div class="toggle-row px-2">
+            <span class="text-muted"><i class="fas fa-video me-2"></i>تتبع تلقائي</span>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="auto-center" checked>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="action-bar glass-panel p-2">
+        <button class="action-fab btn-primary-glow" id="emergency-btn" data-tooltip="خدمة العملاء">
+            <i class="fas fa-headset"></i>
+        </button>
+    </div>
+
+    <!-- Location Stats (Desktop) -->
+    <div class="glass-panel location-box d-none d-md-block">
+        <div class="compass-ring">
+            <i class="fas fa-location-arrow compass-arrow" id="compass"></i>
+        </div>
+        <div class="info-row pt-3">
+            <span class="info-key">الإحداثيات</span>
+            <span class="info-val" id="coordinates">...</span>
+        </div>
+        <div class="info-row">
+            <span class="info-key">الدقة</span>
+            <span class="info-val" id="accuracy">-- م</span>
+        </div>
+    </div>
+
+    <!-- Travel Mode Selector -->
+    <div class="glass-panel mode-selector">
+        <div class="mode-btn active" id="mode-car-btn" data-mode="driving">
+            <i class="fas fa-car"></i>
+        </div>
+        <div class="mode-btn" id="mode-walk-btn" data-mode="walking">
+            <i class="fas fa-walking"></i>
+        </div>
+    </div>
+
+    <!-- Mobile Action Button (Visible only on mobile to open menu) -->
+    <div class="mobile-controls-fab d-md-none">
+        <div class="mode-btn" style="background: var(--primary-color); color: white;" id="mobile-menu-trigger">
+            <i class="fas fa-bars"></i>
+        </div>
+    </div>
+
+    <!-- Side Panel: Branches List -->
+    <div class="glass-panel side-panel" id="branches-panel">
+        <div class="panel-header">
+            <h5 class="panel-title"><i class="fas fa-map-marker-alt"></i> المواقع القريبة</h5>
+            <button class="panel-close" id="close-branches"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="panel-body" id="branches-list">
+            <!-- Dynamic Content -->
+        </div>
+    </div>
+
+    <!-- Side Panel: Customer Service (Only) -->
+    <div class="glass-panel side-panel" id="emergency-panel">
+        <div class="panel-header">
+            <h5 class="panel-title" style="color: var(--accent-color);"><i class="fas fa-headset"></i> خدمة العملاء</h5>
+            <button class="panel-close" id="close-emergency"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="panel-body">
+            <div class="list-item">
+                <div class="item-icon" style="background: rgba(52, 152, 219, 0.2); color: #3498db;">
+                    <i class="fas fa-headset"></i>
+                </div>
+                <div class="item-info">
+                    <h6>خدمة العملاء</h6>
+                    <small dir="ltr">022953333</small>
+                </div>
+                <a href="tel:022953333" class="btn btn-sm btn-outline-primary ms-auto">اتصال</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js"></script>
+
+    <script>
+        // --- Configuration ---
+        mapboxgl.accessToken = 'pk.eyJ1IjoibW9oYW1tZWQtMTMzMSIsImEiOiJjbWlsaWh1anAxM2kzM2dyNHR5eTU4am9hIn0.arsZikWNpuoceyWdnM30VA';
+
+        // Define Icon Mappings for Uniform Professional Look
+        const iconMapping = {
+            'atm': 'fa-money-bill-wave',
+            'branch': 'fa-building-columns',
+            'gas': 'fa-gas-pump',
+            'shop': 'fa-shopping-bag',
+            'hospital': 'fa-hospital',
+            'landmark': 'fa-map-marked-alt',
+            'default': 'fa-map-marker-alt'
+        };
+
+        // Enhanced Destinations Data
+        // Preserving all original data points with new styling schema
+        const destinations = {
+            // ATMs
+            RamamllhaATM1: { name: "صراف البنك العربي 1", coordinates: [35.1979466, 31.9043281], type: "atm" },
+            RamamllhaATM2: { name: "صراف البنك العربي 2", coordinates: [35.2039468, 31.9047687], type: "atm" },
+            RamamllhaATM3: { name: "صراف البنك العربي 3", coordinates: [35.2103474, 31.9015499], type: "atm" },
+            RamamllhaATM4: { name: "صراف البنك العربي 4", coordinates: [35.2104411, 31.9064525], type: "atm" },
+            RamamllhaATM5: { name: "صراف البنك العربي 5", coordinates: [35.2038083, 31.8937176], type: "atm" },
+            RamamllhaATM6: { name: "صراف البنك العربي 6", coordinates: [35.1774200, 31.8982361], type: "atm" },
+            RamamllhaATM7: { name: "صراف البنك العربي 7", coordinates: [35.2115772, 31.9240344], type: "atm" },
+            RamamllhaATM9: { name: "صراف البنك العربي 9", coordinates: [35.1931069, 31.9678030], type: "atm" },
+            millennium_atm: { name: "صراف فندق الميلينيوم", coordinates: [35.2048138891888, 31.89586792292947], type: "atm" },
+            um_sharayet_atm: { name: "صراف أم شرايط", coordinates: [35.21164198403004, 31.88875366783402], type: "atm" },
+            al_bireh_atm: { name: "صراف فرع البيرة", coordinates: [35.21079773282417, 31.906812970405], type: "atm" },
+            bzu_atm: { name: "صراف جامعة بيرزيت", coordinates: [35.18139783339325, 31.95984726535798], type: "atm" },
+            birzeit_atm: { name: "صراف بيرزيت", coordinates: [35.19308757761658, 31.967836831381], type: "atm" },
+
+            // Branches
+            ramallah_center: { name: "مركزي رام الله التحتا", coordinates: [35.1966213415176, 31.90473157911436], type: "branch" },
+            ramallah_al_balad: { name: "فرع رام الله البلد", coordinates: [35.19694313794926, 31.9047933680251], type: "branch" },
+            al_bireh_branch: { name: "فرع البيرة", coordinates: [35.21080449091851, 31.90684187383359], type: "branch" },
+            central_branch: { name: "الفرع المركزي", coordinates: [35.20460755197826, 31.90511348411686], type: "branch" },
+            al_manara_branch: { name: "فرع المنارة", coordinates: [35.2046428163957, 31.90505336561647], type: "branch" },
+            birzeit_branch: { name: "فرع بيرزيت", coordinates: [35.19306462925778, 31.96786372766914], type: "branch" },
+            bank_arab: { name: "البنك العربي", coordinates: [35.19329281687995, 31.96917552710591], type: "branch" },
+            al_reehan: { name: "فرع الريحان", coordinates: [35.16881824290121, 31.9391827522339], type: "branch" },
+
+            // Services & Landmarks
+            al_huda_fuels: { name: "محطة الهدى", coordinates: [35.19880027095686, 31.8855172870815], type: "gas" },
+            khawaja_station: { name: "محطة الخواجا", coordinates: [35.2215153326494, 31.87120989781428], type: "gas" },
+            palestine_medical: { name: "مجمع فلسطين الطبي", coordinates: [35.20598278434559, 31.89902212033414], type: "hospital" },
+            bravo_market: { name: "سوبر ماركت برافو", coordinates: [35.18895569811461, 31.90897031567543], type: "shop" },
+            ramallah_mall: { name: "رام الله مول", coordinates: [35.20656381431914, 31.90808420396556], type: "shop" },
+            mazaya_mall: { name: "مزايا مول", coordinates: [35.19355319098348, 31.93654676131946], type: "shop" },
+
+            // Other Locations
+            al_masyoon: { name: "المصيون", coordinates: [35.2003326263602, 31.889717724395], type: "landmark" },
+            al_tireh: { name: "الطيرة", coordinates: [35.1862014247212, 31.91177197360297], type: "landmark" },
+            beituniya: { name: "بيتونيا", coordinates: [35.17817649101558, 31.89858146338332], type: "landmark" },
+            clock_roundabout: { name: "دوار الساعة", coordinates: [35.20375563474033, 31.90324281610504], type: "landmark" },
+            al_ram: { name: "الرام", coordinates: [35.22797703941472, 31.84872501996944], type: "landmark" },
+            burj_al_sheikh: { name: "برج الشيخ", coordinates: [35.21045308185135, 31.89983734426793], type: "landmark" },
+            national_towers: { name: "أبراج الوطنية", coordinates: [35.21106937499199, 31.9017672420436], type: "landmark" },
+            central_transmission: { name: "الإرسال - مركزي", coordinates: [35.20724478446887, 31.91711798293989], type: "landmark" },
+            palestine_tower: { name: "برج فلسطين", coordinates: [35.20721800327197, 31.91716938242694], type: "landmark" },
+            al_baloa: { name: "البالوع", coordinates: [35.2124992205616, 31.9242874323287], type: "landmark" },
+            jawwal_area: { name: "منطقة جوال", coordinates: [35.2149078950963, 31.92821275469514], type: "landmark" },
+            abu_qash: { name: "أبو قش", coordinates: [35.1838117021113, 31.95163336160273], type: "landmark" },
+            rawabi: { name: "روابي", coordinates: [35.19013009285347, 32.01137212340873], type: "landmark" },
+            bayt_rima: { name: "بيت ريما", coordinates: [35.1034090603974, 32.03893413888758], type: "landmark" },
+            bidu: { name: "بدو", coordinates: [35.15210575252251, 31.83732408151624], type: "landmark" },
+            dayr_ibzi: { name: "دير ابزيع", coordinates: [35.12528175323867, 31.91814793410924], type: "landmark" },
+            beit_ur: { name: "بيت عور التحتا", coordinates: [35.09016091506144, 31.8941542954906], type: "landmark" }
+        };
+
+        // State
+        let map, userMarker;
+        let userLocation = null;
+        let currentRoute = null;
+        let travelMode = 'driving';
+        let feedbackData = [];
+
+        // --- Initialization ---
+        function initMap() {
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/navigation-night-v1', // Keeping Dark theme as base
+                center: [35.1966213, 31.9047316],
+                zoom: 14,
+                pitch: 45, // 3D perspective
+                bearing: -17.6
+            });
+
+            map.on('load', () => {
+                // Add 3D buildings for that "Wow" factor
+                map.addLayer({
+                    'id': '3d-buildings',
+                    'source': 'composite',
+                    'source-layer': 'building',
+                    'filter': ['==', 'extrude', 'true'],
+                    'type': 'fill-extrusion',
+                    'minzoom': 14,
+                    'paint': {
+                        'fill-extrusion-color': '#aaa',
+                        'fill-extrusion-height': ['get', 'height'],
+                        'fill-extrusion-base': ['get', 'min_height'],
+                        'fill-extrusion-opacity': 0.6
+                    }
+                });
+
+                // Add markers
+                addMarkers();
+
+                // Track user
+                startTracking();
+            });
+        }
+
+        function createCustomMarkerElement(type) {
+            const el = document.createElement('div');
+            el.className = 'custom-marker';
+
+            // Map types to proper visual classes
+            let pinClass = 'default';
+            if (type === 'atm') pinClass = 'atm';
+            else if (type === 'branch') pinClass = 'branch';
+            else if (type === 'gas') pinClass = 'gas';
+            else if (type === 'shop') pinClass = 'shop';
+            else if (type === 'hospital') pinClass = 'hospital';
+
+            const iconClass = iconMapping[type] || iconMapping['default'];
+
+            el.innerHTML = `
+                <div class="marker-pin ${pinClass}">
+                    <i class="fas ${iconClass}"></i>
+                </div>
+            `;
+            return el;
+        }
+
+        function addMarkers() {
+            for (const [key, dest] of Object.entries(destinations)) {
+                const el = createCustomMarkerElement(dest.type || 'default');
+
+                // Popup Content
+                const popupContent = `
+                    <div style="text-align:center; color: #333; padding: 5px;">
+                        <h6 style="margin-bottom:5px; font-weight:bold;">${dest.name}</h6>
+                        <button class="btn btn-sm btn-primary w-100" onclick="calculateRouteTo('${key}')">
+                            <i class="fas fa-location-arrow"></i> الذهاب
+                        </button>
+                    </div>
+                `;
+
+                new mapboxgl.Marker(el)
+                    .setLngLat(dest.coordinates)
+                    .setPopup(new mapboxgl.Popup({ offset: 25, className: 'premium-popup' }).setHTML(popupContent))
+                    .addTo(map);
+            }
+        }
+
+        // --- Routing & Navigation ---
+        window.calculateRouteTo = async function (destinationKey) {
+            if (!userLocation) {
+                alert("جاري تحديد موقعك... يرجى الانتظار");
+                return;
+            }
+
+            const dest = destinations[destinationKey];
+            const start = [userLocation.lng, userLocation.lat];
+            const end = dest.coordinates;
+
+            // API Call
+            const profile = travelMode === 'driving' ? 'driving' : 'walking';
+            const query = await fetch(
+                `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`
+            );
+            const json = await query.json();
+            const data = json.routes[0];
+
+            if (!data) {
+                alert('لا يمكن العثور على مسار.');
+                return;
+            }
+
+            // Draw Route
+            const route = data.geometry.coordinates;
+            const geojson = {
+                type: 'Feature',
+                properties: {},
+                geometry: { type: 'LineString', coordinates: route }
+            };
+
+            if (map.getSource('route')) {
+                map.getSource('route').setData(geojson);
+            } else {
+                map.addLayer({
+                    id: 'route',
+                    type: 'line',
+                    source: { type: 'geojson', data: geojson },
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: {
+                        'line-color': '#00b4d8',
+                        'line-width': 5,
+                        'line-opacity': 0.8
+                    }
+                });
+            }
+
+            // Update HUD Stats
+            const durationMins = Math.floor(data.duration / 60);
+            const distKm = (data.distance / 1000).toFixed(1);
+
+            document.getElementById('eta-time').innerText = durationMins;
+            document.getElementById('remaining-distance').innerText = distKm;
+
+            // Fit bounds
+            const bounds = new mapboxgl.LngLatBounds(start, start);
+            route.forEach(coord => bounds.extend(coord));
+            map.fitBounds(bounds, { padding: 100 });
+        };
+
+        // --- Geolocation ---
+        function startTracking() {
+            if (!navigator.geolocation) {
+                alert("عذراً، متصفحك لا يدعم تحديد الموقع الجغرافي.");
+                return;
+            }
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            };
+
+            const onLocationSuccess = (pos) => {
+                const { latitude, longitude, accuracy, speed, heading } = pos.coords;
+                userLocation = { lat: latitude, lng: longitude };
+
+                // Update Marker
+                if (!userMarker) {
+                    const el = document.createElement('div');
+                    el.innerHTML = '<div style="width: 20px; height: 20px; background: #00ff88; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 15px rgba(0,255,136,0.6);"></div>';
+                    userMarker = new mapboxgl.Marker(el).setLngLat([longitude, latitude]).addTo(map);
+
+                    // Initial fly to user
+                    map.flyTo({ center: [longitude, latitude], zoom: 15 });
+                } else {
+                    userMarker.setLngLat([longitude, latitude]);
+                }
+
+                // Update HUD
+                document.getElementById('current-speed').innerText = speed ? Math.round(speed * 3.6) : 0;
+                document.getElementById('coordinates').innerText = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+                document.getElementById('accuracy').innerText = Math.round(accuracy) + ' م';
+
+                // Update Compass
+                const compass = document.getElementById('compass');
+                if (heading) compass.style.transform = `rotate(${heading}deg)`;
+
+                // Auto Center functionality
+                if (document.getElementById('auto-center').checked) {
+                    map.easeTo({ center: [longitude, latitude] });
+                }
+            };
+
+            const onLocationError = (err) => {
+                console.error("Geo Error:", err);
+                let msg = "حدث خطأ أثناء تحديد الموقع.";
+                if (err.code === 1) msg = "الرجاء السماح للمتصفح بتحديد موقعك من الإعدادات.";
+                else if (err.code === 2) msg = "إشارة GPS ضعيفة أو غير متوفرة.";
+                else if (err.code === 3) msg = "انتهت مهلة تحديد الموقع. يرجى المحاولة مرة أخرى.";
+
+                // Update UI to show error state if needed, or just warn once
+                if (!userLocation) {
+                    // Only alert if we haven't found the user yet
+                    // alert(msg); // Commented to prevent loop, usually handled by checking status
+                    document.getElementById('coordinates').innerText = "تعذر تحديد الموقع";
+                }
+            };
+
+            // Start watching
+            navigator.geolocation.watchPosition(onLocationSuccess, onLocationError, options);
+        }
+
+        // --- Logic Handlers ---
+
+        // Find Nearest ATM
+        document.getElementById('find-nearest-atm-btn')?.addEventListener('click', () => {
+            if (!userLocation) {
+                alert("جاري محاولة تحديد موقعك... تأكد من تفعيل خدمة الموقع (GPS).");
+                // Try force update
+                navigator.geolocation.getCurrentPosition(() => { }, () => alert("تعذر تحديد الموقع. تأكد من إعدادات المتصفح."));
+                return;
+            }
+
+            let nearest = null;
+            let minDist = Infinity;
+
+            for (const key in destinations) {
+                if (destinations[key].type === 'atm') {
+                    // Simple Haversine (Good enough for sorting)
+                    const [lon, lat] = destinations[key].coordinates;
+                    const d = Math.pow(lon - userLocation.lng, 2) + Math.pow(lat - userLocation.lat, 2);
+                    if (d < minDist) {
+                        minDist = d;
+                        nearest = key;
+                    }
+                }
+            }
+
+            if (nearest) calculateRouteTo(nearest);
+        });
+
+        // Recenter
+        document.getElementById('recenter-btn')?.addEventListener('click', () => {
+            if (userLocation) {
+                map.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 16, pitch: 50 });
+            } else {
+                alert("لم يتم تحديد موقعك بعد. جاري المحاولة...");
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        userLocation = { lat: latitude, lng: longitude };
+                        map.flyTo({ center: [longitude, latitude], zoom: 16, pitch: 50 });
+                    },
+                    (err) => {
+                        let msg = "تعذر تحديد الموقع.";
+                        if (err.code === 1) msg = "تم رفض الإذن.";
+                        alert(msg);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            }
+        });
+
+        // Panels
+        const togglePanel = (id) => {
+            const el = document.getElementById(id);
+            const isOpen = el.classList.contains('open');
+            // Close all
+            document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+            // Toggle target
+            if (!isOpen) el.classList.add('open');
+        };
+
+        document.getElementById('emergency-btn').addEventListener('click', () => togglePanel('emergency-panel'));
+        document.getElementById('close-emergency').addEventListener('click', () => togglePanel('emergency-panel'));
+
+        // Removed Feedback and Export listeners as requested
+
+        // Helper: Calculate distance in km
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // Nearby Branches
+        document.getElementById('nearby-branches-btn').addEventListener('click', () => {
+            const list = document.getElementById('branches-list');
+            list.innerHTML = ''; // Clear
+
+            // Sort by distance using accurate formula
+            const sorted = Object.entries(destinations)
+                .map(([key, val]) => {
+                    const dist = userLocation ? calculateDistance(userLocation.lat, userLocation.lng, val.coordinates[1], val.coordinates[0]) : 0;
+                    return { key, val, dist };
+                })
+                .sort((a, b) => a.dist - b.dist);
+
+            sorted.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                // Determine icon
+                const type = item.val.type || 'default';
+                const iconClass = iconMapping[type] || 'fa-map-marker-alt';
+                const distDisplay = userLocation ? `${item.dist.toFixed(2)} كم` : '--';
+
+                div.innerHTML = `
+                    <div class="item-icon">
+                        <i class="fas ${iconClass}"></i>
+                    </div>
+                    <div class="item-info">
+                        <h6>${item.val.name}</h6>
+                        <small>${type === 'atm' ? 'صراف آلي' : type === 'branch' ? 'فرع البنك' : 'موقع'}</small>
+                    </div>
+                    <div class="item-distance">
+                         <span style="font-size:0.9rem; margin-inline-end:5px;">${distDisplay}</span>
+                        <i class="fas fa-location-arrow"></i>
+                    </div>
+                `;
+                div.onclick = () => {
+                    calculateRouteTo(item.key);
+                    togglePanel('branches-panel'); // close
+                };
+                list.appendChild(div);
+            });
+
+            togglePanel('branches-panel');
+        });
+        document.getElementById('close-branches').addEventListener('click', () => togglePanel('branches-panel'));
+
+        // Rating logic removed
+
+        // Mode Switching
+        document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                travelMode = btn.dataset.mode;
+                // Recalculate if route exists? (Complex logic omitted for brevity, usually triggers re-route)
+            });
+        });
+
+        // Mobile Menu Trigger (Simple)
+        document.getElementById('mobile-menu-trigger')?.addEventListener('click', () => {
+            // In a real app, this would open a mobile optimized menu
+            // For now, let's open the branches panel as a fallback menu
+            togglePanel('branches-panel');
+        });
+
+        // Initialize
+        initMap();
+
+    </script>
+</body>
+
+</html>
